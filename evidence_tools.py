@@ -112,7 +112,7 @@ def _fetch_search_results(query: str, max_results: int = 4) -> List[Dict[str, An
             payload = {
                 "model": "perplexity/sonar",
                 "messages": [{"role": "user", "content": f"Find recent factual info on: {query}"}],
-                "max_tokens": 500,
+                "max_tokens": 800,
             }
             resp = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
@@ -228,7 +228,7 @@ def domain_name(url: str) -> str:
 
 def search_and_read(question: str, max_sources: int = 6) -> List[PageRecord]:
     """Stage 1: Parallel search queries, deduplicate URLs, scrape with Trafilatura,
-    trim to ~2000 tokens, and assign rule-based credibility scores. (NO LLM)"""
+    trim to ~1500tokens, and assign rule-based credibility scores. (NO LLM)"""
     variants = generate_query_variants(question)
     all_results: List[Dict[str, Any]] = []
 
@@ -270,7 +270,7 @@ def search_and_read(question: str, max_sources: int = 6) -> List[PageRecord]:
                 )
 
             # Trim to ~2000 tokens (~8000 characters)
-            trimmed_text = raw_text[:8000]
+            trimmed_text = raw_text[:6000]
             credibility = calculate_credibility(url, pub_date, is_fallback)
 
             source_id = f"s{source_idx}"

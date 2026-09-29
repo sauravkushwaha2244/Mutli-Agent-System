@@ -7,6 +7,37 @@ const resultsTitle = document.querySelector("#results-title");
 const reportContent = document.querySelector("#report-content");
 const copyButton = document.querySelector("#copy-button");
 const downloadButton = document.querySelector("#download-button");
+const cloudSavedBadge = document.querySelector("#cloud-saved-badge");
+
+// History drawer elements
+const historyToggleBtn = document.querySelector("#history-toggle-btn");
+const closeHistoryBtn = document.querySelector("#close-history-btn");
+const historyDrawer = document.querySelector("#history-drawer");
+const drawerOverlay = document.querySelector("#drawer-overlay");
+const historyItems = document.querySelector("#history-items");
+
+// Auth and User Profile elements
+const authBtn = document.querySelector("#auth-btn");
+const userPill = document.querySelector("#user-pill");
+const userEmailLabel = document.querySelector("#user-email-label");
+const logoutBtn = document.querySelector("#logout-btn");
+const supabasePill = document.querySelector("#supabase-pill");
+
+const authModal = document.querySelector("#auth-modal");
+const authForm = document.querySelector("#auth-form");
+const authTitle = document.querySelector("#auth-title");
+const closeAuthBtn = document.querySelector("#close-auth-btn");
+const authEmailInput = document.querySelector("#auth-email");
+const authPasswordInput = document.querySelector("#auth-password");
+const authError = document.querySelector("#auth-error");
+const authSuccess = document.querySelector("#auth-success");
+const authSubmitBtn = document.querySelector("#auth-submit-btn");
+const authSubmitLabel = document.querySelector("#auth-submit-label");
+const authToggleModeBtn = document.querySelector("#auth-toggle-mode-btn");
+
+let sbClient = null;
+let currentUser = null;
+let authMode = "signin"; // "signin" | "signup"
 
 const stepNames = ["search_and_read", "extract_claims", "analyze_claims", "synthesize_and_visualize"];
 const stepLabels = {
@@ -159,9 +190,234 @@ function renderAudit(claims) {
   });
 }
 
+// ── Supabase Auth Helper Functions ──
+function updateAuthModalMode(mode) {
+  authMode = mode;
+  clearAuthMessages();
+  if (authMode === "signin") {
+    if (authTitle) authTitle.textContent = "Sign In to ResearchMind";
+    if (authSubmitLabel) authSubmitLabel.textContent = "Sign In";
+    if (authToggleModeBtn) authToggleModeBtn.textContent = "Don't have an account? Sign up";
+    if (authPasswordInput) authPasswordInput.autocomplete = "current-password";
+  } else {
+    if (authTitle) authTitle.textContent = "Create ResearchMind Account";
+    if (authSubmitLabel) authSubmitLabel.textContent = "Create Account";
+    if (authToggleModeBtn) authToggleModeBtn.textContent = "Already have an account? Sign in";
+    if (authPasswordInput) authPasswordInput.autocomplete = "new-password";
+  }
+}
+
+function openAuthModal(mode = "signin") {
+  updateAuthModalMode(mode);
+  if (authModal) authModal.hidden = false;
+  if (authEmailInput) authEmailInput.focus();
+}
+
+function closeAuthModal() {
+  if (authModal) authModal.hidden = true;
+  clearAuthMessages();
+  if (authForm) authForm.reset();
+}
+
+function showAuthError(msg) {
+  if (authError) {
+    authError.textContent = msg;
+    authError.hidden = false;
+  }
+  if (authSuccess) authSuccess.hidden = true;
+}
+
+function showAuthSuccess(msg) {
+  if (authSuccess) {
+    authSuccess.textContent = msg;
+    authSuccess.hidden = false;
+  }
+  if (authError) authError.hidden = true;
+}
+
+function clearAuthMessages() {
+  if (authError) {
+    authError.hidden = true;
+    authError.textContent = "";
+  }
+  if (authSuccess) {
+    authSuccess.hidden = true;
+    authSuccess.textContent = "";
+  }
+}
+
+function updateUserUI(user) {
+  currentUser = user;
+  if (user) {
+    if (authBtn) authBtn.hidden = true;
+    if (userPill) userPill.hidden = false;
+    if (userEmailLabel) userEmailLabel.textContent = user.email || "Authenticated";
+  } else {
+    if (authBtn) authBtn.hidden = false;
+    if (userPill) userPill.hidden = true;
+    if (userEmailLabel) userEmailLabel.textContent = "";
+  }
+}
+
+const FALLBACK_SUPABASE_URL = "https://tolggaarlarbcpjibehw.supabase.co";
+const FALLBACK_SUPABASE_KEY = "sb_publishable_z_eNK3khqDvjafaY7KZC2Q_2sKqHKjz";
+
+function getSupabaseSDK() {
+  if (typeof window !== "undefined" && window.supabase && typeof window.supabase.createClient === "function") {
+    return window.supabase;
+  }
+  if (typeof supabase !== "undefined" && typeof supabase.createClient === "function") {
+    return supabase;
+  }
+  return null;
+}
+
+async function waitForSupabaseSDK(timeoutMs = 3000) {
+  const start = Date.now();
+  let sdk = getSupabaseSDK();
+  while (!sdk && Date.now() - start < timeoutMs) {
+    await new Promise((r) => setTimeout(r, 100));
+    sdk = getSupabaseSDK();
+  }
+  return sdk;
+}
+
+async function initAuth() {
+  try {
+    let statusData = {};
+    try {
+      const resp = await fetch("/api/status");
+      if (resp.ok) statusData = await resp.json();
+    } catch (e) {
+      console.warn("Could not query /api/status:", e);
+    }
+
+    const isConnected = statusData.supabase_connected !== false;
+    if (supabasePill) {
+      if (isConnected) {
+        supabasePill.innerHTML = '<span class="status-dot"></span>Supabase Connected';
+      } else {
+        supabasePill.innerHTML = '<span class="status-dot" style="background:var(--dim);box-shadow:none"></span>Local Mode';
+      }
+    }
+
+    const sdk = await waitForSupabaseSDK();
+    const url = statusData.supabase_url || FALLBACK_SUPABASE_URL;
+    const key = statusData.supabase_key || FALLBACK_SUPABASE_KEY;
+
+    if (url && key && sdk) {
+      sbClient = sdk.createClient(url, key);
+
+      // Check existing session
+      const { data } = await sbClient.auth.getSession();
+      if (data && data.session && data.session.user) {
+        updateUserUI(data.session.user);
+      } else {
+        updateUserUI(null);
+      }
+
+      // Listen for session changes (login, logout, refresh)
+      sbClient.auth.onAuthStateChange((event, session) => {
+        const user = session ? session.user : null;
+        updateUserUI(user);
+        if (event === "SIGNED_IN") {
+          closeAuthModal();
+          loadHistory();
+        } else if (event === "SIGNED_OUT") {
+          loadHistory();
+        }
+      });
+    } else {
+      console.warn("Supabase SDK or credentials unavailable.");
+    }
+  } catch (err) {
+    console.warn("Supabase auth initialization skipped or failed:", err);
+  }
+}
+
+// ── Supabase History Functions ──
+async function loadHistory() {
+  try {
+    let url = "/api/history";
+    if (currentUser && currentUser.id) {
+      url += `?user_id=${encodeURIComponent(currentUser.id)}`;
+    }
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const list = data.history || [];
+
+    if (list.length === 0) {
+      historyItems.innerHTML = '<p class="history-empty">No saved investigations yet.</p>';
+      return;
+    }
+
+    historyItems.innerHTML = "";
+    list.forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "history-item";
+      card.innerHTML = `
+        <div class="history-title">${escapeHtml(item.topic)}</div>
+        <div class="history-meta">
+          <span>${item.sources_count || 0} sources · ${item.claims_count || 0} claims</span>
+          <span>${escapeHtml(String(item.created_at || "").slice(0, 16))}</span>
+        </div>
+      `;
+      card.addEventListener("click", () => openHistoryDetail(item.id));
+      historyItems.appendChild(card);
+    });
+  } catch (err) {
+    historyItems.innerHTML = '<p class="history-empty">Unable to load history.</p>';
+  }
+}
+
+async function openHistoryDetail(recordId) {
+  closeDrawer();
+  clearError();
+  setLoading(true);
+
+  try {
+    const resp = await fetch(`/api/history/${encodeURIComponent(recordId)}`);
+    if (!resp.ok) throw new Error("Could not fetch investigation record");
+    const data = await resp.json();
+
+    latestReport = data.report_markdown || "";
+    resultsTitle.textContent = data.topic;
+    reportContent.innerHTML = renderMarkdown(latestReport);
+
+    renderVisuals(data.visuals);
+    renderSources(data.sources);
+    renderAudit(data.claims);
+
+    if (cloudSavedBadge) cloudSavedBadge.hidden = false;
+    results.hidden = false;
+    setPipeline(stepNames.length, "");
+    results.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (err) {
+    showError(err.message || "Failed to load past investigation.");
+  } finally {
+    setLoading(false);
+  }
+}
+
+function openDrawer() {
+  historyDrawer.hidden = false;
+  drawerOverlay.hidden = false;
+  loadHistory();
+}
+
+function closeDrawer() {
+  historyDrawer.hidden = true;
+  drawerOverlay.hidden = true;
+}
+
+if (historyToggleBtn) historyToggleBtn.addEventListener("click", openDrawer);
+if (closeHistoryBtn) closeHistoryBtn.addEventListener("click", closeDrawer);
+if (drawerOverlay) drawerOverlay.addEventListener("click", closeDrawer);
+
 function runResearch(topic) {
   clearError();
   results.hidden = true;
+  if (cloudSavedBadge) cloudSavedBadge.hidden = true;
   setLoading(true);
   setPipeline(0, "");
 
@@ -170,7 +426,11 @@ function runResearch(topic) {
     activeEventSource = null;
   }
 
-  const streamUrl = `/api/research/stream?topic=${encodeURIComponent(topic)}`;
+  let streamUrl = `/api/research/stream?topic=${encodeURIComponent(topic)}`;
+  if (currentUser) {
+    if (currentUser.id) streamUrl += `&user_id=${encodeURIComponent(currentUser.id)}`;
+    if (currentUser.email) streamUrl += `&user_email=${encodeURIComponent(currentUser.email)}`;
+  }
   const es = new EventSource(streamUrl);
   activeEventSource = es;
 
@@ -206,9 +466,13 @@ function runResearch(topic) {
       renderSources(data.sources);
       renderAudit(data.claims);
 
+      if (cloudSavedBadge) cloudSavedBadge.hidden = false;
       results.hidden = false;
       setPipeline(stepNames.length, "");
       results.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      // Refresh history in background
+      loadHistory();
     } catch (err) {
       showError("Failed to display research results.");
     } finally {
@@ -275,3 +539,89 @@ downloadButton.addEventListener("click", () => {
   link.click();
   URL.revokeObjectURL(link.href);
 });
+
+// ── Auth & Modal Event Listeners ──
+if (authBtn) {
+  authBtn.addEventListener("click", () => openAuthModal("signin"));
+}
+if (closeAuthBtn) {
+  closeAuthBtn.addEventListener("click", closeAuthModal);
+}
+if (authToggleModeBtn) {
+  authToggleModeBtn.addEventListener("click", () => {
+    updateAuthModalMode(authMode === "signin" ? "signup" : "signin");
+  });
+}
+if (authModal) {
+  authModal.addEventListener("click", (e) => {
+    if (e.target === authModal) closeAuthModal();
+  });
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (authModal && !authModal.hidden) closeAuthModal();
+    if (historyDrawer && !historyDrawer.hidden) closeDrawer();
+  }
+});
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    if (sbClient) {
+      await sbClient.auth.signOut();
+    }
+    updateUserUI(null);
+  });
+}
+
+if (authForm) {
+  authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearAuthMessages();
+
+    const email = authEmailInput ? authEmailInput.value.trim() : "";
+    const password = authPasswordInput ? authPasswordInput.value : "";
+
+    if (!email || !password) {
+      showAuthError("Please provide both email and password.");
+      return;
+    }
+    if (!sbClient) {
+      await initAuth();
+    }
+    if (!sbClient) {
+      showAuthError("Unable to establish Supabase connection. Please refresh the page and try again.");
+      return;
+    }
+
+    if (authSubmitBtn) authSubmitBtn.disabled = true;
+    if (authSubmitLabel) {
+      authSubmitLabel.textContent = authMode === "signin" ? "Signing In..." : "Creating Account...";
+    }
+
+    try {
+      if (authMode === "signin") {
+        const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        closeAuthModal();
+      } else {
+        const { data, error } = await sbClient.auth.signUp({ email, password });
+        if (error) throw error;
+        if (data.session) {
+          closeAuthModal();
+        } else {
+          showAuthSuccess("Account created! Please check your email inbox to confirm your account, or sign in if confirmed.");
+        }
+      }
+    } catch (err) {
+      showAuthError(err.message || "Authentication error occurred.");
+    } finally {
+      if (authSubmitBtn) authSubmitBtn.disabled = false;
+      if (authSubmitLabel) {
+        authSubmitLabel.textContent = authMode === "signin" ? "Sign In" : "Create Account";
+      }
+    }
+  });
+}
+
+// Initialize Supabase Auth and load history on startup
+initAuth();
+loadHistory();

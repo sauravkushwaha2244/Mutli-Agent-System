@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" defer></script>
   <script src="/app.js" defer></script>
@@ -17,13 +18,67 @@
   <div class="page-glow page-glow--top" aria-hidden="true"></div>
   <div class="page-glow page-glow--bottom" aria-hidden="true"></div>
 
+  <!-- History Sidebar Drawer -->
+  <aside class="history-drawer" id="history-drawer" aria-label="Past Investigations" hidden>
+    <div class="drawer-header">
+      <div class="panel-kicker"><span>📚</span> Past Investigations</div>
+      <button type="button" class="quiet-button close-drawer-btn" id="close-history-btn" aria-label="Close history">&times;</button>
+    </div>
+    <div class="history-list" id="history-items">
+      <p class="history-empty">Loading history from Supabase...</p>
+    </div>
+  </aside>
+
+  <!-- Login / Sign-up Modal -->
+  <div class="auth-modal" id="auth-modal" hidden>
+    <div class="auth-card panel">
+      <div class="drawer-header">
+        <div class="panel-kicker"><span class="brand-mark" style="display:inline-grid;width:22px;height:22px;font-size:0.75rem;vertical-align:middle;margin-right:6px">R</span> <span id="auth-title">Sign In to ResearchMind</span></div>
+        <button type="button" class="quiet-button close-drawer-btn" id="close-auth-btn" aria-label="Close dialog">&times;</button>
+      </div>
+      <form id="auth-form">
+        <label for="auth-email">Email Address</label>
+        <input id="auth-email" type="email" autocomplete="email" placeholder="name@example.com" required>
+        
+        <label for="auth-password" style="margin-top:14px">Password</label>
+        <input id="auth-password" type="password" autocomplete="current-password" placeholder="••••••••" required minlength="6">
+        
+        <p class="form-error" id="auth-error" role="alert" hidden></p>
+        <p class="auth-success" id="auth-success" role="status" hidden></p>
+
+        <div class="auth-actions">
+          <button class="primary-button" id="auth-submit-btn" type="submit" style="width:100%;justify-content:center;min-height:44px">
+            <span id="auth-submit-label">Sign In</span>
+          </button>
+          <button type="button" class="quiet-button" id="auth-toggle-mode-btn" style="text-align:center;width:100%">
+            Don't have an account? Sign up
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="drawer-overlay" id="drawer-overlay" hidden></div>
+
   <main class="shell">
     <header class="topbar">
       <a class="brand" href="/" aria-label="ResearchMind home">
         <span class="brand-mark">R</span>
         <span>ResearchMind</span>
       </a>
-      <span class="status-pill"><span class="status-dot"></span>Evidence Pipeline Ready</span>
+      <div class="topbar-actions">
+        <button type="button" class="quiet-button" id="history-toggle-btn"><span>📚 History</span></button>
+        
+        <!-- Auth Profile Widget -->
+        <button type="button" class="quiet-button" id="auth-btn"><span>🔑 Sign In</span></button>
+        <div class="user-pill" id="user-pill" hidden>
+          <span class="user-avatar">👤</span>
+          <span class="user-email" id="user-email-label"></span>
+          <button type="button" class="logout-link" id="logout-btn" title="Sign out">Log out</button>
+        </div>
+
+        <span class="status-pill" id="supabase-pill"><span class="status-dot"></span>Supabase Connected</span>
+      </div>
     </header>
 
     <section class="hero" aria-labelledby="page-title">
@@ -65,7 +120,11 @@
     <section class="results" id="results" hidden>
       <div class="results-heading">
         <div><p class="eyebrow">Research output</p><h2 id="results-title">Your report</h2></div>
-        <div class="result-actions"><button class="quiet-button" id="copy-button" type="button">Copy report</button><button class="quiet-button" id="download-button" type="button">Download .md</button></div>
+        <div class="result-actions">
+          <span class="cloud-badge" id="cloud-saved-badge" hidden>☁ Saved to Supabase</span>
+          <button class="quiet-button" id="copy-button" type="button">Copy report</button>
+          <button class="quiet-button" id="download-button" type="button">Download .md</button>
+        </div>
       </div>
 
       <article class="report-panel panel">
@@ -99,7 +158,7 @@
       </details>
     </section>
 
-    <footer>ResearchMind <span>/</span> Evidence-First Multi-Agent Pipeline <span>/</span> Verified Quotes &amp; Citations</footer>
+    <footer>ResearchMind <span>/</span> Evidence-First Multi-Agent Pipeline <span>/</span> Supabase Cloud Auth &amp; Persistence</footer>
   </main>
 </body>
 </html>
