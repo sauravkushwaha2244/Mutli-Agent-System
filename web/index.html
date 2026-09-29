@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ResearchMind evidence-first research workspace">
+  <title>ResearchMind | Evidence-First Multi-Agent Research</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="page-glow page-glow--top" aria-hidden="true"></div>
+  <div class="page-glow page-glow--bottom" aria-hidden="true"></div>
+
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="ResearchMind home">
+        <span class="brand-mark">R</span>
+        <span>ResearchMind</span>
+      </a>
+      <span class="status-pill"><span class="status-dot"></span>Evidence Pipeline Ready</span>
+    </header>
+
+    <section class="hero" aria-labelledby="page-title">
+      <p class="eyebrow">Evidence-first research workspace</p>
+      <h1 id="page-title">Turn questions into<br><em>verified evidence.</em></h1>
+      <p class="hero-copy">Parallel multi-query search, Trafilatura deep scraping, strict quote verification, consensus analysis, and interactive evidence visualization.</p>
+    </section>
+
+    <section class="workspace" aria-label="Research workspace">
+      <div class="query-panel panel">
+        <div class="panel-kicker"><span>01</span> Start a research run</div>
+        <form id="research-form">
+          <label for="topic">What should we investigate?</label>
+          <div class="query-row">
+            <input id="topic" name="topic" type="text" autocomplete="off" placeholder="e.g. Fusion energy progress in 2026" required>
+            <button class="primary-button" type="submit"><span>Run research</span><span class="button-arrow">&rarr;</span></button>
+          </div>
+        </form>
+        <div class="suggestions" aria-label="Suggested research topics">
+          <span class="suggestion-label">Try a direction</span>
+          <button type="button" class="suggestion" data-topic="LLM multi-agent systems 2026">LLM multi-agent systems 2026</button>
+          <button type="button" class="suggestion" data-topic="CRISPR gene therapy approvals">CRISPR gene therapy approvals</button>
+          <button type="button" class="suggestion" data-topic="Fusion energy net gain progress">Fusion energy net gain progress</button>
+        </div>
+        <p class="form-error" id="form-error" role="alert" hidden></p>
+      </div>
+
+      <aside class="pipeline-panel" aria-label="Research pipeline">
+        <div class="panel-kicker"><span>02</span> Evidence Pipeline</div>
+        <ol class="pipeline-list">
+          <li class="pipeline-step" data-step="search_and_read"><span class="step-icon">01</span><span><strong>Search &amp; Read</strong><small>Parallel queries + Trafilatura</small></span><b>Waiting</b></li>
+          <li class="pipeline-step" data-step="extract_claims"><span class="step-icon">02</span><span><strong>Extract Claims</strong><small>Verbatim quote verification</small></span><b>Waiting</b></li>
+          <li class="pipeline-step" data-step="analyze_claims"><span class="step-icon">03</span><span><strong>Analyze &amp; Cluster</strong><small>Agree, Disputed, Single Source</small></span><b>Waiting</b></li>
+          <li class="pipeline-step" data-step="synthesize_and_visualize"><span class="step-icon">04</span><span><strong>Synthesize &amp; Visualize</strong><small>Report + Plotly &amp; Mermaid</small></span><b>Waiting</b></li>
+        </ol>
+      </aside>
+    </section>
+
+    <section class="results" id="results" hidden>
+      <div class="results-heading">
+        <div><p class="eyebrow">Research output</p><h2 id="results-title">Your report</h2></div>
+        <div class="result-actions"><button class="quiet-button" id="copy-button" type="button">Copy report</button><button class="quiet-button" id="download-button" type="button">Download .md</button></div>
+      </div>
+
+      <article class="report-panel panel">
+        <div class="panel-kicker"><span>03</span> Verified Synthesis Report</div>
+        <div class="markdown-content" id="report-content"></div>
+      </article>
+
+      <section class="visuals-container" id="visuals-container">
+        <div class="chart-card panel" id="agreement-chart-card">
+          <div class="panel-kicker"><span>04</span> Consensus Breakdown</div>
+          <div id="agreement-chart"></div>
+        </div>
+        <div class="chart-card panel" id="credibility-chart-card">
+          <div class="panel-kicker"><span>05</span> Source Credibility</div>
+          <div id="credibility-chart"></div>
+        </div>
+        <div class="chart-card conflict-card panel" id="conflict-map-card" hidden>
+          <div class="panel-kicker panel-kicker--green"><span>06</span> Conflict &amp; Dispute Map</div>
+          <div class="mermaid-box mermaid" id="conflict-map-mermaid"></div>
+        </div>
+      </section>
+
+      <section class="sources-card panel" id="sources-card">
+        <div class="panel-kicker"><span>07</span> Numbered Sources Registry</div>
+        <ul class="sources-list" id="sources-list"></ul>
+      </section>
+
+      <details class="source-details panel" id="audit-details">
+        <summary>View Evidence Audit (Verified Quotes &amp; Scores)</summary>
+        <div class="audit-list" id="audit-list"></div>
+      </details>
+    </section>
+
+    <footer>ResearchMind <span>/</span> Evidence-First Multi-Agent Pipeline <span>/</span> Verified Quotes &amp; Citations</footer>
+  </main>
+</body>
+</html>
