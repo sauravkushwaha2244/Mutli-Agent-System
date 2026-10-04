@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 import json
 from app import app
 from supabase_client import save_research_run, get_history, is_supabase_configured
+import supabase_client
 
 
 class TestApiEndpoints(unittest.TestCase):
@@ -50,6 +51,26 @@ class TestApiEndpoints(unittest.TestCase):
             user_email="testuser@example.com"
         )
         self.assertIn("saved_to", save_info)
+
+    @patch("supabase_client.requests.post")
+    @patch("supabase_client.is_supabase_configured", return_value=True)
+    def test_save_uses_supabase_bearer_authorization(self, _mock_configured, mock_post):
+        mock_post.return_value = MagicMock(
+            status_code=201,
+            json=lambda: [{"id": "saved-record"}],
+        )
+
+        save_info = save_research_run({
+            "topic": "Authorization regression",
+            "report_markdown": "Report",
+            "sources": [],
+            "claims": [],
+            "visuals": {},
+        })
+
+        self.assertEqual(save_info, {"saved_to": "supabase", "id": "saved-record"})
+        headers = mock_post.call_args.kwargs["headers"]
+        self.assertEqual(headers["Authorization"], "Bearer " + supabase_client.SUPABASE_KEY)
 
 
 if __name__ == "__main__":

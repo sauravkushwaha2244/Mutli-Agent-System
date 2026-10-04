@@ -21,12 +21,14 @@ def is_supabase_configured() -> bool:
 
 
 def _get_headers() -> Dict[str, str]:
-    return {
+    headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json",
         "Prefer": "return=representation"
     }
+    headers["Authorization"] = "Bearer " + SUPABASE_KEY
+    return headers
 
 
 def save_research_run(
